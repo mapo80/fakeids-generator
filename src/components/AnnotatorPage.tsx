@@ -11,6 +11,7 @@ interface Props {
 
 const fieldTypes = ['testo','immagine','firma','timbro','foto_volto'];
 const fonts = ['OCR-B'];
+const alignments = ['left', 'center', 'right'];
 const textTypeOptions = [
   { value: 'numero', label: 'Numero' },
   { value: 'nome', label: 'Nome' },
@@ -98,11 +99,12 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
       const newAnn: Annotation = {
         id,
         field_name: '',
+        field_type: 'testo',
         font: fonts[0],
         font_size: 12,
         font_color: '#000000',
-        field_type: 'testo',
         text_type: textTypeOptions[0].value,
+        text_align: 'left',
         left: Math.min(sx, x),
         top: Math.min(sy, y),
         width: Math.abs(x - sx),
@@ -357,41 +359,63 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
               <input className="form-control" value={selected.field_name} onChange={e => updateSelected({ field_name: e.target.value })} />
             </div>
             <div className="mb-2">
-              <label className="form-label">font</label>
-              <select className="form-select" value={selected.font} onChange={e => updateSelected({ font: e.target.value })}>
-                {[selected.font, ...fonts.filter(f => f !== selected.font)].map(f => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
-            </div>
-            <div className="mb-2">
-              <label className="form-label">font_size</label>
-              <input type="number" className="form-control" value={selected.font_size} onChange={e => updateSelected({ font_size: Number(e.target.value) })} />
-            </div>
-            <div className="mb-2">
-              <label className="form-label">font_color</label>
-              <input type="color" className="form-control form-control-color" value={selected.font_color} onChange={e => updateSelected({ font_color: e.target.value })} />
-            </div>
-            <div className="mb-2">
               <label className="form-label">field_type</label>
               <select
                 className="form-select"
                 value={selected.field_type}
-                onChange={e => updateSelected({
-                  field_type: e.target.value,
-                  text_type: e.target.value === 'testo' ? textTypeOptions[0].value : ''
-                })}
+                onChange={e => {
+                  const type = e.target.value;
+                  const patch: Partial<Annotation> = { field_type: type };
+                  if (type === 'testo') {
+                    patch.font = selected.font || fonts[0];
+                    patch.font_size = selected.font_size || 12;
+                    patch.font_color = selected.font_color || '#000000';
+                    patch.text_type = selected.text_type || textTypeOptions[0].value;
+                    patch.text_align = selected.text_align || 'left';
+                  } else {
+                    patch.font = undefined;
+                    patch.font_size = undefined;
+                    patch.font_color = undefined;
+                    patch.text_type = undefined;
+                    patch.text_align = undefined;
+                  }
+                  updateSelected(patch);
+                }}
               >
                 {fieldTypes.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             {selected.field_type === 'testo' && (
-              <div className="mb-2">
-                <label className="form-label">text_type</label>
-                <select className="form-select" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })}>
-                  {textTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
+              <>
+                <div className="mb-2">
+                  <label className="form-label">font</label>
+                  <select className="form-select" value={selected.font} onChange={e => updateSelected({ font: e.target.value })}>
+                    {[selected.font, ...fonts.filter(f => f !== selected.font)].map(f => (
+                      <option key={f} value={f}>{f}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">font_size</label>
+                  <input type="number" className="form-control" value={selected.font_size} onChange={e => updateSelected({ font_size: Number(e.target.value) })} />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">font_color</label>
+                  <input type="color" className="form-control form-control-color" value={selected.font_color} onChange={e => updateSelected({ font_color: e.target.value })} />
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">text_align</label>
+                  <select className="form-select" value={selected.text_align} onChange={e => updateSelected({ text_align: e.target.value as 'left'|'center'|'right' })}>
+                    {alignments.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">text_type</label>
+                  <select className="form-select" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })}>
+                    {textTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+              </>
             )}
             <button className="btn btn-danger" onClick={deleteSelected}>Elimina</button>
           </div>
