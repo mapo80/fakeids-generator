@@ -17,9 +17,9 @@ describe('drawing bounding boxes', () => {
     Object.defineProperty(wrapper, 'getBoundingClientRect', {
       value: () => ({ left: 0, top: 0, width: 100, height: 100, right:100, bottom:100 })
     });
-    fireEvent.mouseDown(img, { clientX: 10, clientY: 10, button: 0, shiftKey: true });
+    fireEvent.mouseDown(img, { clientX: 10, clientY: 10, button: 0 });
     fireEvent.mouseMove(img, { clientX: 60, clientY: 60 });
-    fireEvent.mouseUp(img, { clientX: 60, clientY: 60, button: 0, shiftKey: true });
+    fireEvent.mouseUp(img, { clientX: 60, clientY: 60, button: 0 });
     await waitFor(() => {
       const boxes = container.querySelectorAll('[data-testid="bbox"]');
       expect(boxes.length).toBe(1);

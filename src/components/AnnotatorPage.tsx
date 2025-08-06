@@ -19,6 +19,8 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const [offset, setOffset] = useState({ x:0, y:0 });
   const [initialRect, setInitialRect] = useState({ left:0, top:0, width:0, height:0 });
   const [corner, setCorner] = useState<'nw'|'ne'|'sw'|'se'|null>(null);
+  const longPressTimer = useRef<number | null>(null);
+  const pressPos = useRef<{x:number,y:number}>({x:0,y:0});
   const [zoom, setZoom] = useState(1);
   const [baseZoom, setBaseZoom] = useState(1);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -46,23 +48,42 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   }, [mode, annotations, selectedId]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (mode === 'none' && e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
-    if (mode === 'none' && e.button === 0 && !e.shiftKey) {
+    if (e.button !== 0) return;
+    if (mode !== 'none') return;
+    if (e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
+
+    const rect = wrapperRef.current!.getBoundingClientRect();
+    const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
+    const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
+    pressPos.current = { x, y };
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+    longPressTimer.current = window.setTimeout(() => {
       setPanStart({
-        x: e.clientX,
-        y: e.clientY,
+        x: clientX,
+        y: clientY,
         scrollLeft: wrapperRef.current!.scrollLeft,
         scrollTop: wrapperRef.current!.scrollTop
       });
       setMode('panning');
+      longPressTimer.current = null;
+    }, 300);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (mode === 'panning' && panStart) {
+      wrapperRef.current!.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
+      wrapperRef.current!.scrollTop = panStart.scrollTop - (e.clientY - panStart.y);
       return;
     }
-    if (mode === 'none' && e.button === 0 && e.shiftKey) {
+    if (mode === 'none' && longPressTimer.current !== null) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
       const rect = wrapperRef.current!.getBoundingClientRect();
       const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
       const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
-      setStart({ x, y });
-      setMode('drawing');
+      const sx = pressPos.current.x;
+      const sy = pressPos.current.y;
       const id = crypto.randomUUID();
       const newAnn: Annotation = {
         id,
@@ -71,20 +92,15 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         font_size: 12,
         font_color: '#000000',
         field_type: 'testo',
-        left: x,
-        top: y,
-        width: 0,
-        height: 0,
+        left: Math.min(sx, x),
+        top: Math.min(sy, y),
+        width: Math.abs(x - sx),
+        height: Math.abs(y - sy)
       };
       setAnnotations([...annotations, newAnn]);
       setSelectedId(id);
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (mode === 'panning' && panStart) {
-      wrapperRef.current!.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
-      wrapperRef.current!.scrollTop = panStart.scrollTop - (e.clientY - panStart.y);
+      setStart({ x: sx, y: sy });
+      setMode('drawing');
       return;
     }
     if (!selectedId || mode === 'none') return;
@@ -150,6 +166,10 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
     if (mode === 'drawing') {
       if (e.button === 2) {
         cancelDrawing();
@@ -217,7 +237,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onContextMenu={e => e.preventDefault()}
-          style={{ cursor: mode === 'panning' ? 'grabbing' : 'grab' }}
+          style={{ cursor: mode === 'panning' ? 'grabbing' : 'crosshair' }}
         >
           <img
             ref={imgRef}
