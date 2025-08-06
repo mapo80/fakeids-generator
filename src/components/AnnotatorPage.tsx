@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Annotation } from '../types';
 import { exportYaml } from '../utils/yaml';
 
@@ -20,26 +20,72 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const [initialRect, setInitialRect] = useState({ left:0, top:0, width:0, height:0 });
   const [corner, setCorner] = useState<'nw'|'ne'|'sw'|'se'|null>(null);
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.target !== wrapperRef.current) return;
-    const rect = wrapperRef.current!.getBoundingClientRect();
-    setStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    setMode('drawing');
-    const id = crypto.randomUUID();
-    const newAnn: Annotation = {
-      id,
-      field_name: '',
-      font: '',
-      font_size: 12,
-      font_color: '#000000',
-      field_type: 'testo',
-      left: e.clientX - rect.left,
-      top: e.clientY - rect.top,
-      width: 0,
-      height: 0,
+  const cancelDrawing = () => {
+    setAnnotations(annotations.filter(a => a.id !== selectedId));
+    setSelectedId(null);
+    setMode('none');
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && mode === 'drawing') {
+        cancelDrawing();
+      }
     };
-    setAnnotations([...annotations, newAnn]);
-    setSelectedId(id);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, annotations, selectedId]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (mode === 'none' && e.target !== wrapperRef.current) return;
+    const rect = wrapperRef.current!.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (mode === 'drawing') {
+      if (e.button === 2) { // cancel with right click
+        cancelDrawing();
+        return;
+      }
+      if (e.button !== 0) return;
+      const width = Math.abs(x - start.x);
+      const height = Math.abs(y - start.y);
+      if (width < 1 || height < 1) {
+        cancelDrawing();
+        return;
+      }
+      setAnnotations(annotations.map(a => {
+        if (a.id !== selectedId) return a;
+        return {
+          ...a,
+          left: Math.min(start.x, x),
+          top: Math.min(start.y, y),
+          width,
+          height
+        };
+      }));
+      setMode('none');
+      return;
+    }
+    if (mode === 'none' && e.button === 0) {
+      // start drawing
+      setStart({ x, y });
+      setMode('drawing');
+      const id = crypto.randomUUID();
+      const newAnn: Annotation = {
+        id,
+        field_name: '',
+        font: '',
+        font_size: 12,
+        font_color: '#000000',
+        field_type: 'testo',
+        left: x,
+        top: y,
+        width: 0,
+        height: 0,
+      };
+      setAnnotations([...annotations, newAnn]);
+      setSelectedId(id);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -106,8 +152,10 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   const handleMouseUp = () => {
-    setMode('none');
-    setCorner(null);
+    if (mode === 'moving' || mode === 'resizing') {
+      setMode('none');
+      setCorner(null);
+    }
   };
 
   const selected = annotations.find(a => a.id === selectedId);
@@ -136,7 +184,8 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   return (
     <div className="d-flex">
       <div className="flex-grow-1 position-relative image-wrapper" ref={wrapperRef}
-           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}>
+           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
+           onContextMenu={e => e.preventDefault()}>
         <img src={image} alt="template" className="w-100" />
         {annotations.map(a => (
           <div key={a.id}
