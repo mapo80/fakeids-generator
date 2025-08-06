@@ -112,7 +112,17 @@ DEFAULT_TEMPLATE = "dataset/CARTA_IDENTITA_CARTACEA/Template/fronte.jpeg"
 
 
 def main():
-    st.set_page_config(layout="wide")
+    if "collapse_sidebar" not in st.session_state:
+        st.session_state.collapse_sidebar = False
+    st.set_page_config(
+        layout="wide",
+        initial_sidebar_state="collapsed"
+        if st.session_state.collapse_sidebar
+        else "expanded",
+    )
+    if st.session_state.collapse_sidebar:
+        # reset so subsequent interactions don't repeatedly collapse it
+        st.session_state.collapse_sidebar = False
     st.title("Annotatore di campi")
 
     if "bg_img" not in st.session_state:
@@ -144,6 +154,8 @@ def main():
             st.session_state.yaml_name = "annotazioni.yml"
             st.session_state.yaml_path = "annotazioni.yml"
         st.session_state.selected_idx = None
+        st.session_state.collapse_sidebar = True
+        st.experimental_rerun()
 
     if st.session_state.tpl_name == os.path.basename(DEFAULT_TEMPLATE):
         st.sidebar.info(f"Usando template: {DEFAULT_TEMPLATE}")
