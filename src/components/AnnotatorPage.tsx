@@ -14,18 +14,20 @@ const fieldTypes = ['testo','immagine','firma','timbro','foto_volto'];
 const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnnotations }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [mode, setMode] = useState<'none'|'drawing'|'moving'|'resizing'>('none');
+  const [mode, setMode] = useState<'none'|'drawing'|'moving'|'resizing'|'panning'>('none');
   const [start, setStart] = useState({ x:0, y:0 });
   const [offset, setOffset] = useState({ x:0, y:0 });
   const [initialRect, setInitialRect] = useState({ left:0, top:0, width:0, height:0 });
   const [corner, setCorner] = useState<'nw'|'ne'|'sw'|'se'|null>(null);
   const [zoom, setZoom] = useState(1);
+  const [baseZoom, setBaseZoom] = useState(1);
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
+  const [panStart, setPanStart] = useState<{x:number,y:number,scrollLeft:number,scrollTop:number}|null>(null);
 
   const zoomIn = () => setZoom(z => z + 0.1);
   const zoomOut = () => setZoom(z => Math.max(0.1, z - 0.1));
-  const resetZoom = () => setZoom(1);
+  const resetZoom = () => setZoom(baseZoom);
 
   const cancelDrawing = () => {
     setAnnotations(annotations.filter(a => a.id !== selectedId));
@@ -45,6 +47,11 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode === 'none' && e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
+    if (mode === 'none' && e.button === 0 && !e.shiftKey) {
+      setPanStart({ x: e.clientX, y: e.clientY, scrollLeft: wrapperRef.current!.scrollLeft, scrollTop: wrapperRef.current!.scrollTop });
+      setMode('panning');
+      return;
+    }
     const rect = wrapperRef.current!.getBoundingClientRect();
     const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
     const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
@@ -73,7 +80,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
       setMode('none');
       return;
     }
-    if (mode === 'none' && e.button === 0) {
+    if (mode === 'none' && e.button === 0 && e.shiftKey) {
       // start drawing
       setStart({ x, y });
       setMode('drawing');
@@ -96,6 +103,11 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    if (mode === 'panning' && panStart) {
+      wrapperRef.current!.scrollLeft = panStart.scrollLeft - (e.clientX - panStart.x);
+      wrapperRef.current!.scrollTop = panStart.scrollTop - (e.clientY - panStart.y);
+      return;
+    }
     if (!selectedId || mode === 'none') return;
     const rect = wrapperRef.current!.getBoundingClientRect();
     const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
@@ -159,9 +171,10 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   const handleMouseUp = () => {
-    if (mode === 'moving' || mode === 'resizing') {
+    if (mode === 'moving' || mode === 'resizing' || mode === 'panning') {
       setMode('none');
       setCorner(null);
+      setPanStart(null);
     }
   };
 
@@ -192,11 +205,22 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
     <div className="d-flex">
       <div className="flex-grow-1 position-relative image-wrapper overflow-auto" ref={wrapperRef}
            onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-           onContextMenu={e => e.preventDefault()}>
+           onContextMenu={e => e.preventDefault()} style={{ cursor: mode === 'panning' ? 'grabbing' : 'grab' }}>
         <img ref={imgRef} src={image} alt="template"
              style={{ width: imgSize.width ? imgSize.width * zoom : undefined,
                       height: imgSize.height ? imgSize.height * zoom : undefined }}
-             onLoad={e => setImgSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })} />
+             onLoad={e => {
+               const { naturalWidth, naturalHeight } = e.currentTarget;
+               setImgSize({ width: naturalWidth, height: naturalHeight });
+               if (wrapperRef.current) {
+                 const fit = Math.min(
+                   wrapperRef.current.clientWidth / naturalWidth,
+                   wrapperRef.current.clientHeight / naturalHeight
+                 );
+                 setBaseZoom(fit);
+                 setZoom(fit);
+               }
+             }} />
         {annotations.map(a => (
           <div key={a.id}
                data-testid="bbox"
@@ -229,7 +253,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
           <button className="btn btn-light btn-sm" onClick={resetZoom} aria-label="reset zoom">⟳</button>
         </div>
       </div>
-      <div className="border-start p-3" style={{ width: 320 }}>
+      <div className="border-start p-3" style={{ width: 320, flex: '0 0 320px' }}>
         <button className="btn btn-success float-end mb-3" onClick={handleExport}>Salva YAML</button>
         {selected ? (
           <div>
