@@ -37,7 +37,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   }, [mode, annotations, selectedId]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (mode === 'none' && e.target !== wrapperRef.current) return;
+    if (mode === 'none' && e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
     const rect = wrapperRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -189,6 +189,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         <img src={image} alt="template" className="w-100" />
         {annotations.map(a => (
           <div key={a.id}
+               data-testid="bbox"
                className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
                style={{ left:a.left, top:a.top, width:a.width, height:a.height }}
                onMouseDown={(e)=>{
