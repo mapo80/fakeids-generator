@@ -58,13 +58,19 @@ def draw_text(draw: ImageDraw.ImageDraw, field: dict, text: str) -> None:
     h = field["height"]
     font_name = field.get("font")
     font_size = field.get("font_size", 12)
-    font = load_font(font_name, font_size)
     font_color = field.get("font_color", "#000000")
     align = field.get("text_align", "left")
 
-    bbox = draw.textbbox((0, 0), text, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
+    # shrink font until text fits inside the bounding box
+    while True:
+        font = load_font(font_name, font_size)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_w = bbox[2] - bbox[0]
+        text_h = bbox[3] - bbox[1]
+        if (text_w <= w and text_h <= h) or font_size <= 1:
+            break
+        font_size -= 1
+
     if align == "center":
         tx = x + (w - text_w) / 2
     elif align == "right":
@@ -82,8 +88,14 @@ def paste_image(img: Image.Image, field: dict, src_path: Path) -> None:
     w = int(field["width"])
     h = int(field["height"])
     patch = Image.open(src_path).convert("RGBA")
-    patch = patch.resize((w, h), Image.LANCZOS)
-    img.paste(patch, (x, y), patch)
+    pw, ph = patch.size
+    scale = min(w / pw, h / ph)
+    new_w = int(pw * scale)
+    new_h = int(ph * scale)
+    patch = patch.resize((new_w, new_h), Image.LANCZOS)
+    px = x + (w - new_w) // 2
+    py = y + (h - new_h) // 2
+    img.paste(patch, (px, py), patch)
 
 
 def prepare_signatures(username: str, key: str, sig_dir: Path) -> list[Path]:
