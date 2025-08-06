@@ -25,6 +25,17 @@ npm run dev
 4. Select rectangles to edit their properties in the panel on the right or delete them.
 5. Use **Salva YAML** to download the updated annotations.
 
+### Python generator
+
+To render synthetic documents from a YAML template, install the Python dependencies and run the generator:
+
+```bash
+pip install -r fake_generator/requirements.txt
+python -m fake_generator.generate path/to/template.yaml --kaggle-username <user> --kaggle-key <key>
+```
+
+The YAML can specify a `font` for each text field. Fonts are looked up in the `fonts` directory; at the moment the project includes the **OCR-B** regular font, which can be referenced with `font: OCR-B`.
+
 ## Tests
 
 An end-to-end test verifies the YAML import/export roundtrip. Run:

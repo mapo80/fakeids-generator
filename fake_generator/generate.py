@@ -16,7 +16,17 @@ fake = Faker('it_IT')
 
 def load_font(font_name: str | None, font_size: int) -> ImageFont.FreeTypeFont:
     """Try to load a font by name; fall back to a default font."""
+    fonts_dir = Path(__file__).resolve().parent.parent / "fonts"
+    font_map = {
+        "ocr-b": fonts_dir / "ocrb" / "OCRB Regular.ttf",
+    }
     if font_name:
+        key = font_name.lower()
+        if key in font_map:
+            try:
+                return ImageFont.truetype(str(font_map[key]), font_size)
+            except Exception:
+                pass
         try:
             return ImageFont.truetype(font_name, font_size)
         except Exception:
