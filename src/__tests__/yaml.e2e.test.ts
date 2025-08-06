@@ -9,9 +9,6 @@ describe('YAML roundtrip', () => {
     const newAnn: Annotation = {
       id: '1',
       field_name: 'newField',
-      font: 'Times',
-      font_size: 12,
-      font_color: '#ffffff',
       field_type: 'firma',
       text_type: 'generico',
       left: 10,
@@ -25,5 +22,7 @@ describe('YAML roundtrip', () => {
     expect(round).toHaveLength(2);
     const names = round.map(a => a.field_name).sort();
     expect(names).toEqual(['name', 'newField']);
+    const nameAnn = round.find(a => a.field_name === 'name')!;
+    expect(nameAnn.text_align).toBe('left');
   });
 });

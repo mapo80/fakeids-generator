@@ -19,13 +19,18 @@ describe('drawing bounding boxes', () => {
     });
     fireEvent.mouseDown(img, { clientX: 10, clientY: 10, button: 0 });
     fireEvent.mouseMove(img, { clientX: 60, clientY: 60 });
-    fireEvent.mouseDown(img, { clientX: 60, clientY: 60, button: 0 });
+    fireEvent.mouseUp(img, { clientX: 60, clientY: 60, button: 0 });
     await waitFor(() => {
       const boxes = container.querySelectorAll('[data-testid="bbox"]');
       expect(boxes.length).toBe(1);
       const box = boxes[0] as HTMLElement;
       expect(box.style.width).toBe('50px');
       expect(box.style.height).toBe('50px');
+    });
+    fireEvent.change(screen.getByLabelText('field_name'), { target: { value: 'nome' } });
+    await waitFor(() => {
+      const box = container.querySelector('[data-testid="bbox"]') as HTMLElement;
+      expect(box.textContent).toContain('nome');
     });
   });
 });
