@@ -10,7 +10,8 @@
    ```bash
    streamlit run app.py
    ```
-3. The app will open in the browser and allow drawing, editing and exporting YAML annotations.
+3. In the sidebar, use the **Carica** form to select a template image and an optional YAML file.
+4. Draw or edit rectangles and export the annotations as YAML.
 
 ## Testing
 - Execute `pytest` to run the end-to-end test which verifies that the Streamlit app starts correctly.

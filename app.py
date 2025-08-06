@@ -1,8 +1,27 @@
 import os
+import io
+import base64
 import streamlit as st
+import streamlit.elements.image as st_image
 from streamlit_drawable_canvas import st_canvas
 from PIL import Image
 import yaml
+
+
+def _image_to_url(image, width, clamp=False, channels="RGB", output_format="PNG", image_id=None):
+    """Return a data URL for a PIL image.
+
+    streamlit-drawable-canvas expects streamlit.elements.image.image_to_url to
+    exist, but recent Streamlit versions removed it. This provides a minimal
+    compatible implementation."""
+    buf = io.BytesIO()
+    image.save(buf, format=output_format)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    return f"data:image/{output_format.lower()};base64,{b64}"
+
+
+if not hasattr(st_image, "image_to_url"):
+    st_image.image_to_url = _image_to_url
 
 
 def load_annotations_from_yaml(path: str):
@@ -31,6 +50,27 @@ def load_annotations_from_yaml(path: str):
     return annotations
 
 
+def load_annotations_from_uploaded(uploaded_file):
+    """Load annotations from an uploaded YAML file."""
+    data = yaml.safe_load(uploaded_file.read().decode("utf-8")) or {}
+    annotations = []
+    for fname, props in (data.get("fields", {}) or {}).items():
+        annotations.append(
+            {
+                "field_name": fname,
+                "font": props.get("font", ""),
+                "font_size": int(props.get("font_size", 12)),
+                "font_color": props.get("font_color", "#000000"),
+                "field_type": props.get("field_type", "testo"),
+                "left": int(props.get("x_left", 0)),
+                "top": int(props.get("y_top", 0)),
+                "width": int(props.get("width", 0)),
+                "height": int(props.get("height", 0)),
+            }
+        )
+    return annotations
+
+
 def annotations_to_yaml(template_name: str, annotations):
     """Convert annotations to a YAML string."""
     data = {"template": template_name, "fields": {}}
@@ -55,6 +95,7 @@ def save_annotations_to_yaml(path: str, template_name: str, annotations):
         f.write(yaml_str)
     return yaml_str
 
+
 # Percorso template di default
 DEFAULT_TEMPLATE = "dataset/CARTA_IDENTITA_CARTACEA/Template/fronte.jpeg"
 
@@ -63,34 +104,42 @@ def main():
     st.set_page_config(layout="wide")
     st.title("Annotatore di campi")
 
-    # ---- Caricamento immagine di sfondo ----
-    tpl_file = st.sidebar.file_uploader("Template (PNG/JPG)", type=["png", "jpg", "jpeg"])
-    if tpl_file:
-        bg_img = Image.open(tpl_file)
-        tpl_name = tpl_file.name
-    else:
-        bg_img = Image.open(DEFAULT_TEMPLATE)
-        tpl_name = os.path.basename(DEFAULT_TEMPLATE)
+    if "bg_img" not in st.session_state:
+        st.session_state.bg_img = Image.open(DEFAULT_TEMPLATE)
+        st.session_state.tpl_name = os.path.basename(DEFAULT_TEMPLATE)
+        st.session_state.annotations = []
+        st.session_state.selected_idx = None
+        st.session_state.yaml_name = "annotazioni.yml"
+        st.session_state.yaml_path = "annotazioni.yml"
+
+    with st.sidebar.form("loader"):
+        tpl_file = st.file_uploader("Template (PNG/JPG)", type=["png", "jpg", "jpeg"])
+        yaml_file = st.file_uploader("YAML esistente (opzionale)", type=["yml", "yaml"])
+        load_clicked = st.form_submit_button("Carica")
+
+    if load_clicked:
+        if tpl_file:
+            st.session_state.bg_img = Image.open(tpl_file)
+            st.session_state.tpl_name = tpl_file.name
+        else:
+            st.session_state.bg_img = Image.open(DEFAULT_TEMPLATE)
+            st.session_state.tpl_name = os.path.basename(DEFAULT_TEMPLATE)
+        st.session_state.annotations = []
+        if yaml_file:
+            st.session_state.annotations = load_annotations_from_uploaded(yaml_file)
+            st.session_state.yaml_name = yaml_file.name
+            st.session_state.yaml_path = yaml_file.name
+        else:
+            st.session_state.yaml_name = "annotazioni.yml"
+            st.session_state.yaml_path = "annotazioni.yml"
+        st.session_state.selected_idx = None
+
+    if st.session_state.tpl_name == os.path.basename(DEFAULT_TEMPLATE):
         st.sidebar.info(f"Usando template: {DEFAULT_TEMPLATE}")
 
-    # ---- Gestione stato ----
-    if "annotations" not in st.session_state:
-        st.session_state.annotations = []  # list of dict
-    if "selected_idx" not in st.session_state:
-        st.session_state.selected_idx = None
-    if "yaml_name" not in st.session_state:
-        st.session_state.yaml_name = "annotazioni.yml"
-    if "loaded_yaml" not in st.session_state:
-        st.session_state.loaded_yaml = None
+    bg_img = st.session_state.bg_img
+    tpl_name = st.session_state.tpl_name
 
-    # ---- Caricamento YAML esistente ----
-    yaml_path = st.sidebar.text_input("YAML esistente (opzionale)", "")
-    if yaml_path and os.path.exists(yaml_path) and st.session_state.loaded_yaml != yaml_path:
-        st.session_state.annotations = load_annotations_from_yaml(yaml_path)
-        st.session_state.yaml_name = os.path.basename(yaml_path)
-        st.session_state.loaded_yaml = yaml_path
-
-    # ---- Prepara disegno iniziale ----
     objects = []
     for i, ann in enumerate(st.session_state.annotations):
         objects.append(
@@ -108,9 +157,6 @@ def main():
         )
     initial_drawing = {"version": "4.4.0", "objects": objects}
 
-    mode = st.sidebar.radio("Modalità", ["Disegna", "Modifica"], horizontal=True)
-    canvas_mode = "rect" if mode == "Disegna" else "transform"
-
     canvas_result = st_canvas(
         fill_color="rgba(0,0,0,0)",
         stroke_width=2,
@@ -119,13 +165,12 @@ def main():
         update_streamlit=True,
         height=bg_img.height,
         width=bg_img.width,
-        drawing_mode=canvas_mode,
+        drawing_mode="rect",
         initial_drawing=initial_drawing,
         display_toolbar=True,
         key="canvas",
     )
 
-    # ---- Interpreta risultato canvas ----
     if canvas_result.json_data:
         objs = canvas_result.json_data.get("objects", [])
         for obj in objs:
@@ -159,7 +204,6 @@ def main():
         if active and "id" in active:
             st.session_state.selected_idx = int(active["id"])
 
-    # ---- Sidebar proprietà ----
     st.sidebar.markdown("## Proprietà")
     idx = st.session_state.selected_idx
     if idx is not None and idx < len(st.session_state.annotations):
@@ -192,22 +236,19 @@ def main():
             st.session_state.selected_idx = None
             st.experimental_rerun()
     else:
-        st.sidebar.write("Disegna o seleziona un rettangolo.")
+        st.sidebar.write("Disegna o seleziona un rettangolo tramite la toolbar.")
 
-    # ---- Lista annotazioni ----
     st.subheader("Annotazioni")
     for i, ann in enumerate(st.session_state.annotations):
         st.write(
             f"{i}: {ann['field_name']} ({ann['field_type']}) -> x:{ann['left']} y:{ann['top']} w:{ann['width']} h:{ann['height']}"
         )
 
-    # ---- Esporta YAML ----
     if st.button("Esporta YAML"):
         yaml_str = annotations_to_yaml(tpl_name, st.session_state.annotations)
-        if st.session_state.loaded_yaml:
-            save_annotations_to_yaml(
-                st.session_state.loaded_yaml, tpl_name, st.session_state.annotations
-            )
+        save_annotations_to_yaml(
+            st.session_state.yaml_path, tpl_name, st.session_state.annotations
+        )
         st.download_button(
             "Scarica YAML", yaml_str, file_name=st.session_state.yaml_name
         )

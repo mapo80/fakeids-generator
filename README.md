@@ -1,6 +1,7 @@
 # Fake IDs Generator
 
-This project contains utilities for creating annotated templates of identification documents. The annotations are later used to generate synthetic identity cards or other documents.
+This project contains utilities for creating annotated templates of identification documents. The annotations are later used to
+generate synthetic identity cards or other documents.
 
 ## Installation
 
@@ -18,9 +19,13 @@ Run the interactive annotation tool:
 streamlit run app.py
 ```
 
-- Upload a template image or use the default one.
-- Optionally load an existing YAML file to pre-populate annotations.
-- Draw rectangles, edit their properties from the sidebar and export the YAML definition with **Esporta YAML**.
+From the sidebar form:
+- Select a template image or use the default one.
+- Optionally choose an existing YAML file to preload annotations.
+- Press **Carica** to load the files.
+
+Draw rectangles on the canvas and use the toolbar to switch between drawing and selection. Edit properties from the sidebar and
+export the YAML definition with **Esporta YAML**, which also saves a copy on disk.
 
 ## Tests
 
