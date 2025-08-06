@@ -14,14 +14,17 @@ const fieldTypes = ['testo','immagine','firma','timbro','foto_volto'];
 const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnnotations }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [drawing, setDrawing] = useState(false);
+  const [mode, setMode] = useState<'none'|'drawing'|'moving'|'resizing'>('none');
   const [start, setStart] = useState({ x:0, y:0 });
+  const [offset, setOffset] = useState({ x:0, y:0 });
+  const [initialRect, setInitialRect] = useState({ left:0, top:0, width:0, height:0 });
+  const [corner, setCorner] = useState<'nw'|'ne'|'sw'|'se'|null>(null);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.target !== wrapperRef.current) return;
     const rect = wrapperRef.current!.getBoundingClientRect();
     setStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    setDrawing(true);
+    setMode('drawing');
     const id = crypto.randomUUID();
     const newAnn: Annotation = {
       id,
@@ -40,20 +43,72 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!drawing || !selectedId) return;
+    if (!selectedId || mode === 'none') return;
     const rect = wrapperRef.current!.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    setAnnotations(annotations.map(a => a.id === selectedId ? {
-      ...a,
-      left: Math.min(start.x, x),
-      top: Math.min(start.y, y),
-      width: Math.abs(x - start.x),
-      height: Math.abs(y - start.y)
-    } : a));
+    setAnnotations(annotations.map(a => {
+      if (a.id !== selectedId) return a;
+      if (mode === 'drawing') {
+        return {
+          ...a,
+          left: Math.min(start.x, x),
+          top: Math.min(start.y, y),
+          width: Math.abs(x - start.x),
+          height: Math.abs(y - start.y)
+        };
+      }
+      if (mode === 'moving') {
+        return {
+          ...a,
+          left: x - offset.x,
+          top: y - offset.y
+        };
+      }
+      if (mode === 'resizing' && corner) {
+        const ir = initialRect;
+        let left = ir.left;
+        let top = ir.top;
+        let width = ir.width;
+        let height = ir.height;
+        const right = ir.left + ir.width;
+        const bottom = ir.top + ir.height;
+        switch (corner) {
+          case 'nw':
+            left = Math.min(x, right);
+            top = Math.min(y, bottom);
+            width = Math.abs(right - left);
+            height = Math.abs(bottom - top);
+            break;
+          case 'ne':
+            top = Math.min(y, bottom);
+            width = Math.abs(x - ir.left);
+            height = Math.abs(bottom - top);
+            left = ir.left;
+            break;
+          case 'sw':
+            left = Math.min(x, right);
+            height = Math.abs(y - ir.top);
+            width = Math.abs(right - left);
+            top = ir.top;
+            break;
+          case 'se':
+            width = Math.abs(x - ir.left);
+            height = Math.abs(y - ir.top);
+            left = ir.left;
+            top = ir.top;
+            break;
+        }
+        return { ...a, left, top, width, height };
+      }
+      return a;
+    }));
   };
 
-  const handleMouseUp = () => setDrawing(false);
+  const handleMouseUp = () => {
+    setMode('none');
+    setCorner(null);
+  };
 
   const selected = annotations.find(a => a.id === selectedId);
 
@@ -87,7 +142,26 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
           <div key={a.id}
                className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
                style={{ left:a.left, top:a.top, width:a.width, height:a.height }}
-               onClick={(e)=>{ e.stopPropagation(); setSelectedId(a.id); }} />
+               onMouseDown={(e)=>{
+                 e.stopPropagation();
+                 setSelectedId(a.id);
+                 const rect = e.currentTarget.getBoundingClientRect();
+                 setOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                 setMode('moving');
+               }}>
+            {a.id === selectedId && (
+              <>
+                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,left:-4,top:-4,cursor:'nw-resize'}}
+                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('nw'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
+                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,right:-4,top:-4,cursor:'ne-resize'}}
+                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('ne'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
+                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,left:-4,bottom:-4,cursor:'sw-resize'}}
+                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('sw'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
+                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,right:-4,bottom:-4,cursor:'se-resize'}}
+                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('se'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
+              </>
+            )}
+          </div>
         ))}
       </div>
       <div className="border-start p-3" style={{ width: 320 }}>
