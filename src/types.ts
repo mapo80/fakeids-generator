@@ -5,6 +5,7 @@ export interface Annotation {
   font_size: number;
   font_color: string;
   field_type: string;
+  text_type: string;
   left: number;
   top: number;
   width: number;

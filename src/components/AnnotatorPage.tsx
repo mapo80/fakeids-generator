@@ -10,6 +10,16 @@ interface Props {
 }
 
 const fieldTypes = ['testo','immagine','firma','timbro','foto_volto'];
+const fonts = ['OCR-B'];
+const textTypeOptions = [
+  { value: 'numero', label: 'Numero' },
+  { value: 'nome', label: 'Nome' },
+  { value: 'cognome', label: 'Cognome' },
+  { value: 'nominativo', label: 'Nominativo (Nome e cognome)' },
+  { value: 'indirizzo', label: 'Indirizzo' },
+  { value: 'citta', label: 'Città' },
+  { value: 'data', label: 'Data dd-MM-yyyy' }
+];
 
 const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnnotations }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -88,10 +98,11 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
       const newAnn: Annotation = {
         id,
         field_name: '',
-        font: '',
+        font: fonts[0],
         font_size: 12,
         font_color: '#000000',
         field_type: 'testo',
+        text_type: textTypeOptions[0].value,
         left: Math.min(sx, x),
         top: Math.min(sy, y),
         width: Math.abs(x - sx),
@@ -347,7 +358,11 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
             </div>
             <div className="mb-2">
               <label className="form-label">font</label>
-              <input className="form-control" value={selected.font} onChange={e => updateSelected({ font: e.target.value })} />
+              <select className="form-select" value={selected.font} onChange={e => updateSelected({ font: e.target.value })}>
+                {[selected.font, ...fonts.filter(f => f !== selected.font)].map(f => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
             </div>
             <div className="mb-2">
               <label className="form-label">font_size</label>
@@ -359,10 +374,25 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
             </div>
             <div className="mb-2">
               <label className="form-label">field_type</label>
-              <select className="form-select" value={selected.field_type} onChange={e => updateSelected({ field_type: e.target.value })}>
+              <select
+                className="form-select"
+                value={selected.field_type}
+                onChange={e => updateSelected({
+                  field_type: e.target.value,
+                  text_type: e.target.value === 'testo' ? textTypeOptions[0].value : ''
+                })}
+              >
                 {fieldTypes.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
+            {selected.field_type === 'testo' && (
+              <div className="mb-2">
+                <label className="form-label">text_type</label>
+                <select className="form-select" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })}>
+                  {textTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+            )}
             <button className="btn btn-danger" onClick={deleteSelected}>Elimina</button>
           </div>
         ) : (
