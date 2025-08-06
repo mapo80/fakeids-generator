@@ -209,7 +209,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
 
   return (
     <div className="d-flex" style={{ height: '100vh' }}>
-      <div className="flex-grow-1 position-relative h-100">
+      <div className="flex-grow-1 position-relative h-100" style={{ minWidth: 0 }}>
         <div
           className="position-relative overflow-auto w-100 h-100 image-wrapper"
           ref={wrapperRef}
