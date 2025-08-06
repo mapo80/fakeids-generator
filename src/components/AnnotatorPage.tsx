@@ -276,20 +276,26 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
               }
             }}
           />
-          {annotations.map(a => (
-            <div
-              key={a.id}
-              data-testid="bbox"
-              className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
-              style={{ left: a.left * zoom, top: a.top * zoom, width: a.width * zoom, height: a.height * zoom }}
-              onMouseDown={e => {
-                e.stopPropagation();
-                setSelectedId(a.id);
-                const rect = e.currentTarget.getBoundingClientRect();
-                setOffset({ x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
-                setMode('moving');
-              }}
-            >
+            {annotations.map(a => (
+              <div
+                key={a.id}
+                data-testid="bbox"
+                className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
+                style={{
+                  left: a.left * zoom,
+                  top: a.top * zoom,
+                  width: a.width * zoom,
+                  height: a.height * zoom,
+                  cursor: selectedId === a.id && mode === 'moving' ? 'grabbing' : 'grab'
+                }}
+                onMouseDown={e => {
+                  e.stopPropagation();
+                  setSelectedId(a.id);
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setOffset({ x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
+                  setMode('moving');
+                }}
+              >
               <div
                 className={`position-absolute text-white px-1 ${a.id === selectedId ? 'bg-primary' : 'bg-danger'}`}
                 style={{ top: 0, left: 0, fontSize: '0.7rem', pointerEvents: 'none' }}
@@ -435,13 +441,17 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         )}
         <hr />
         <h5>Annotazioni</h5>
-        <ul className="list-group">
-          {annotations.map(a => (
-            <li key={a.id} className={`list-group-item ${a.id === selectedId ? 'active' : ''}`} onClick={() => setSelectedId(a.id)}>
-              {a.field_name || '(senza nome)'}
-            </li>
-          ))}
-        </ul>
+          <ul className="list-group">
+            {annotations.map(a => (
+              <li
+                key={a.id}
+                className={`list-group-item ${a.id === selectedId ? 'active' : ''} cursor-pointer`}
+                onClick={() => setSelectedId(a.id)}
+              >
+                {a.field_name || '(senza nome)'}
+              </li>
+            ))}
+          </ul>
       </div>
     </div>
   );
