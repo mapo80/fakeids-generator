@@ -206,7 +206,9 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
       <div className="flex-grow-1 position-relative image-wrapper overflow-auto" ref={wrapperRef}
            onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
            onContextMenu={e => e.preventDefault()} style={{ cursor: mode === 'panning' ? 'grabbing' : 'grab' }}>
-        <img ref={imgRef} src={image} alt="template"
+        <img ref={imgRef} src={image} alt="template" draggable={false}
+             onMouseDown={e => e.preventDefault()}
+             onDragStart={e => e.preventDefault()}
              style={{ width: imgSize.width ? imgSize.width * zoom : undefined,
                       height: imgSize.height ? imgSize.height * zoom : undefined }}
              onLoad={e => {
