@@ -11,6 +11,7 @@ export function loadYaml(text: string): Annotation[] {
     font_size: v.font_size || 0,
     font_color: v.font_color || '#000000',
     field_type: v.field_type || 'testo',
+    text_type: v.text_type || 'generico',
     left: v.x_left || 0,
     top: v.y_top || 0,
     width: v.width || 0,
@@ -30,6 +31,7 @@ export function exportYaml(imageName: string, annotations: Annotation[]): string
       font_size: a.font_size,
       font_color: a.font_color,
       field_type: a.field_type,
+      text_type: a.text_type,
     };
   });
   return yaml.dump({ template: imageName, fields });
