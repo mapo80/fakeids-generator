@@ -290,6 +290,12 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
                 setMode('moving');
               }}
             >
+              <div
+                className={`position-absolute text-white px-1 ${a.id === selectedId ? 'bg-primary' : 'bg-danger'}`}
+                style={{ top: 0, left: 0, fontSize: '0.7rem', pointerEvents: 'none' }}
+              >
+                {a.field_name}
+              </div>
               {a.id === selectedId && (
                 <>
                   <div
@@ -355,8 +361,13 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
           <div>
             <h5>Modifica</h5>
             <div className="mb-2">
-              <label className="form-label">field_name</label>
-              <input className="form-control" value={selected.field_name} onChange={e => updateSelected({ field_name: e.target.value })} />
+              <label className="form-label" htmlFor="field_name">field_name</label>
+              <input
+                id="field_name"
+                className="form-control"
+                value={selected.field_name}
+                onChange={e => updateSelected({ field_name: e.target.value })}
+              />
             </div>
             <div className="mb-2">
               <label className="form-label">field_type</label>

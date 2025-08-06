@@ -27,5 +27,10 @@ describe('drawing bounding boxes', () => {
       expect(box.style.width).toBe('50px');
       expect(box.style.height).toBe('50px');
     });
+    fireEvent.change(screen.getByLabelText('field_name'), { target: { value: 'nome' } });
+    await waitFor(() => {
+      const box = container.querySelector('[data-testid="bbox"]') as HTMLElement;
+      expect(box.textContent).toContain('nome');
+    });
   });
 });
