@@ -8,14 +8,25 @@ from PIL import Image
 import yaml
 
 
-def _image_to_url(image, width, clamp=False, channels="RGB", output_format="PNG", image_id=None):
+def _image_to_url(
+    image,
+    width,
+    clamp=False,
+    channels="RGB",
+    output_format="PNG",
+    image_id=None,
+):
     """Return a data URL for a PIL image.
 
-    streamlit-drawable-canvas expects streamlit.elements.image.image_to_url to
-    exist, but recent Streamlit versions removed it. This provides a minimal
-    compatible implementation."""
+    Recent Streamlit versions removed ``image_to_url`` which the canvas depends on.
+    This helper mirrors the original behaviour by ensuring the image uses the
+    requested channels before encoding it as base64."""
+
+    # ``convert`` avoids a blank/black canvas when the source image is not in
+    # the expected mode (e.g. palette based or grayscale)
+    img = image.convert(channels)
     buf = io.BytesIO()
-    image.save(buf, format=output_format)
+    img.save(buf, format=output_format)
     b64 = base64.b64encode(buf.getvalue()).decode()
     return f"data:image/{output_format.lower()};base64,{b64}"
 
@@ -157,19 +168,21 @@ def main():
         )
     initial_drawing = {"version": "4.4.0", "objects": objects}
 
-    canvas_result = st_canvas(
-        fill_color="rgba(0,0,0,0)",
-        stroke_width=2,
-        stroke_color="#FF0000",
-        background_image=bg_img,
-        update_streamlit=True,
-        height=bg_img.height,
-        width=bg_img.width,
-        drawing_mode="rect",
-        initial_drawing=initial_drawing,
-        display_toolbar=True,
-        key="canvas",
-    )
+    col_canvas, col_props = st.columns([4, 1])
+    with col_canvas:
+        canvas_result = st_canvas(
+            fill_color="rgba(0,0,0,0)",
+            stroke_width=2,
+            stroke_color="#FF0000",
+            background_image=bg_img,
+            update_streamlit=True,
+            height=bg_img.height,
+            width=bg_img.width,
+            drawing_mode="rect",
+            initial_drawing=initial_drawing,
+            display_toolbar=True,
+            key="canvas",
+        )
 
     if canvas_result.json_data:
         objs = canvas_result.json_data.get("objects", [])
@@ -200,43 +213,53 @@ def main():
                         "height": int(obj.get("height", 0)),
                     }
                 )
+                # auto-select newly added rectangle so its properties appear in the panel
+                st.session_state.selected_idx = idx
+                st.experimental_rerun()
         active = canvas_result.json_data.get("activeObject")
         if active and "id" in active:
             st.session_state.selected_idx = int(active["id"])
 
-    st.sidebar.markdown("## Proprietà")
-    idx = st.session_state.selected_idx
-    if idx is not None and idx < len(st.session_state.annotations):
-        ann = st.session_state.annotations[idx]
-        with st.sidebar.form("form_props"):
-            field_name = st.text_input("field_name", ann["field_name"])
-            font = st.text_input("font", ann["font"])
-            font_size = st.number_input("font_size", value=ann["font_size"], step=1)
-            font_color = st.text_input("font_color", ann["font_color"])
-            field_type = st.selectbox(
-                "field_type",
-                ["testo", "immagine", "firma", "timbro", "foto_volto"],
-                index=["testo", "immagine", "firma", "timbro", "foto_volto"].index(
-                    ann["field_type"]
-                ),
-            )
-            submitted = st.form_submit_button("Aggiorna")
-        if submitted:
-            ann.update(
-                {
-                    "field_name": field_name,
-                    "font": font,
-                    "font_size": int(font_size),
-                    "font_color": font_color,
-                    "field_type": field_type,
-                }
-            )
-        if st.sidebar.button("Elimina rettangolo"):
-            st.session_state.annotations.pop(idx)
-            st.session_state.selected_idx = None
-            st.experimental_rerun()
-    else:
-        st.sidebar.write("Disegna o seleziona un rettangolo tramite la toolbar.")
+    with col_props:
+        st.markdown("## Proprietà")
+        idx = st.session_state.selected_idx
+        if idx is not None and idx < len(st.session_state.annotations):
+            ann = st.session_state.annotations[idx]
+            with st.form("form_props"):
+                field_name = st.text_input("field_name", ann["field_name"])
+                font = st.text_input("font", ann["font"])
+                font_size = st.number_input(
+                    "font_size", value=ann["font_size"], step=1
+                )
+                font_color = st.text_input("font_color", ann["font_color"])
+                field_type = st.selectbox(
+                    "field_type",
+                    ["testo", "immagine", "firma", "timbro", "foto_volto"],
+                    index=[
+                        "testo",
+                        "immagine",
+                        "firma",
+                        "timbro",
+                        "foto_volto",
+                    ].index(ann["field_type"]),
+                )
+                submitted = st.form_submit_button("Aggiorna")
+            if submitted:
+                ann.update(
+                    {
+                        "field_name": field_name,
+                        "font": font,
+                        "font_size": int(font_size),
+                        "font_color": font_color,
+                        "field_type": field_type,
+                    }
+                )
+            if st.button("Elimina rettangolo"):
+                st.session_state.annotations.pop(idx)
+                st.session_state.selected_idx = None
+                st.experimental_rerun()
+        else:
+            st.write("Disegna o seleziona un rettangolo tramite la toolbar.")
 
     st.subheader("Annotazioni")
     for i, ann in enumerate(st.session_state.annotations):
