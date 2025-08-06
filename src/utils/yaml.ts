@@ -35,6 +35,7 @@ export function exportYaml(imageName: string, annotations: Annotation[]): string
       width: Math.round(a.width),
       height: Math.round(a.height),
       field_type: a.field_type,
+      text_type: a.text_type,
     };
     if (a.field_type === 'testo') {
       field.font = a.font;

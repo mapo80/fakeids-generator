@@ -1,0 +1,63 @@
+template: fronte.png
+fields:
+  scadenza:
+    x_left: 211
+    y_top: 200
+    width: 229
+    height: 29
+    field_type: testo
+    font: OCR-B
+    font_size: 12
+    font_color: '#000000'
+    text_type: data
+    text_align: left
+  firma_retro:
+    x_left: 200
+    y_top: 321
+    width: 156
+    height: 156
+    field_type: firma
+  numero_carta_retro:
+    x_left: 163
+    y_top: 594
+    width: 237
+    height: 51
+    field_type: testo
+    font: OCR-B
+    font_size: 16
+    font_color: '#000000'
+    text_type: generico
+    text_align: center
+  comune:
+    x_left: 725
+    y_top: 366
+    width: 345
+    height: 45
+    field_type: testo
+    font: OCR-B
+    font_size: 12
+    font_color: '#000000'
+    text_type: citta
+    text_align: left
+  numero_carta_fronte:
+    x_left: 826
+    y_top: 530
+    width: 195
+    height: 38
+    field_type: testo
+    font: OCR-B
+    font_size: 12
+    font_color: '#000000'
+    text_type: generico
+    text_align: left
+  nominativo:
+    x_left: 707
+    y_top: 664
+    width: 356
+    height: 41
+    field_type: testo
+    font: OCR-B
+    font_size: 12
+    font_color: '#000000'
+    text_type: nominativo
+    text_align: center
