@@ -35,6 +35,14 @@ if not hasattr(st_image, "image_to_url"):
     st_image.image_to_url = _image_to_url
 
 
+def _rerun():
+    """Compatibility wrapper for Streamlit rerun APIs."""
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:  # pragma: no cover - older Streamlit
+        st.experimental_rerun()
+
+
 def load_annotations_from_yaml(path: str):
     """Load annotation data from a YAML file.
 
@@ -155,7 +163,7 @@ def main():
             st.session_state.yaml_path = "annotazioni.yml"
         st.session_state.selected_idx = None
         st.session_state.collapse_sidebar = True
-        st.experimental_rerun()
+        _rerun()
 
     if st.session_state.tpl_name == os.path.basename(DEFAULT_TEMPLATE):
         st.sidebar.info(f"Usando template: {DEFAULT_TEMPLATE}")
@@ -227,7 +235,7 @@ def main():
                 )
                 # auto-select newly added rectangle so its properties appear in the panel
                 st.session_state.selected_idx = idx
-                st.experimental_rerun()
+                _rerun()
         active = canvas_result.json_data.get("activeObject")
         if active and "id" in active:
             st.session_state.selected_idx = int(active["id"])
@@ -269,7 +277,7 @@ def main():
             if st.button("Elimina rettangolo"):
                 st.session_state.annotations.pop(idx)
                 st.session_state.selected_idx = None
-                st.experimental_rerun()
+                _rerun()
         else:
             st.write("Disegna o seleziona un rettangolo tramite la toolbar.")
 

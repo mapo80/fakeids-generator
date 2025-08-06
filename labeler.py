@@ -37,10 +37,15 @@ if st.sidebar.button("Registra rettangolo"):
         x, y = obj["left"], obj["top"]
         w, h = obj["width"], obj["height"]
         st.session_state.fields[label] = {
-            "x": int(x), "y": int(y),
-            "w": int(w), "h": int(h)
+            "x": int(x),
+            "y": int(y),
+            "w": int(w),
+            "h": int(h),
         }
-        st.experimental_rerun()
+        if hasattr(st, "rerun"):
+            st.rerun()
+        else:  # pragma: no cover - for older Streamlit
+            st.experimental_rerun()
 
 # Mostra tabella dei campi definiti
 st.subheader("Campi definiti")
