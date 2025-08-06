@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.request import urlretrieve
 
 import yaml
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from faker import Faker
 
 fake = Faker('it_IT')
@@ -82,17 +82,38 @@ def draw_text(draw: ImageDraw.ImageDraw, field: dict, text: str) -> None:
 
 
 def paste_image(img: Image.Image, field: dict, src_path: Path) -> None:
-    """Paste an image into the given field, resizing to fit."""
+    """Paste an image into the given field, resizing to fit.
+
+    Any nearly-white pixels in the source image are made fully transparent so
+    that dataset images with white backgrounds (e.g. signatures or stamps)
+    blend seamlessly with the underlying template.
+    """
+
     x = int(field["x_left"])
     y = int(field["y_top"])
     w = int(field["width"])
     h = int(field["height"])
+
     patch = Image.open(src_path).convert("RGBA")
     pw, ph = patch.size
     scale = min(w / pw, h / ph)
     new_w = int(pw * scale)
     new_h = int(ph * scale)
     patch = patch.resize((new_w, new_h), Image.LANCZOS)
+
+    # Remove near-white background and smoothly fade edges to transparency
+    threshold = 240
+    datas: list[tuple[int, int, int, int]] = []
+    for r, g, b, a in patch.getdata():
+        max_rgb = max(r, g, b)
+        if max_rgb > threshold:
+            alpha = int(a * (255 - max_rgb) / (255 - threshold))
+            datas.append((255, 255, 255, alpha))
+        else:
+            datas.append((r, g, b, a))
+    patch.putdata(datas)
+    patch.putalpha(patch.getchannel("A").filter(ImageFilter.GaussianBlur(1)))
+
     px = x + (w - new_w) // 2
     py = y + (h - new_h) // 2
     img.paste(patch, (px, py), patch)
