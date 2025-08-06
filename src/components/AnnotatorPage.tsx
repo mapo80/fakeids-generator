@@ -19,6 +19,13 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const [offset, setOffset] = useState({ x:0, y:0 });
   const [initialRect, setInitialRect] = useState({ left:0, top:0, width:0, height:0 });
   const [corner, setCorner] = useState<'nw'|'ne'|'sw'|'se'|null>(null);
+  const [zoom, setZoom] = useState(1);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
+
+  const zoomIn = () => setZoom(z => z + 0.1);
+  const zoomOut = () => setZoom(z => Math.max(0.1, z - 0.1));
+  const resetZoom = () => setZoom(1);
 
   const cancelDrawing = () => {
     setAnnotations(annotations.filter(a => a.id !== selectedId));
@@ -39,8 +46,8 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode === 'none' && e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
     const rect = wrapperRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
+    const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
     if (mode === 'drawing') {
       if (e.button === 2) { // cancel with right click
         cancelDrawing();
@@ -91,8 +98,8 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!selectedId || mode === 'none') return;
     const rect = wrapperRef.current!.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
+    const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
     setAnnotations(annotations.map(a => {
       if (a.id !== selectedId) return a;
       if (mode === 'drawing') {
@@ -183,20 +190,23 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
 
   return (
     <div className="d-flex">
-      <div className="flex-grow-1 position-relative image-wrapper" ref={wrapperRef}
+      <div className="flex-grow-1 position-relative image-wrapper overflow-auto" ref={wrapperRef}
            onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
            onContextMenu={e => e.preventDefault()}>
-        <img src={image} alt="template" className="w-100" />
+        <img ref={imgRef} src={image} alt="template"
+             style={{ width: imgSize.width ? imgSize.width * zoom : undefined,
+                      height: imgSize.height ? imgSize.height * zoom : undefined }}
+             onLoad={e => setImgSize({ width: e.currentTarget.naturalWidth, height: e.currentTarget.naturalHeight })} />
         {annotations.map(a => (
           <div key={a.id}
                data-testid="bbox"
                className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
-               style={{ left:a.left, top:a.top, width:a.width, height:a.height }}
+               style={{ left:a.left*zoom, top:a.top*zoom, width:a.width*zoom, height:a.height*zoom }}
                onMouseDown={(e)=>{
                  e.stopPropagation();
                  setSelectedId(a.id);
                  const rect = e.currentTarget.getBoundingClientRect();
-                 setOffset({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                 setOffset({ x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
                  setMode('moving');
                }}>
             {a.id === selectedId && (
@@ -213,6 +223,11 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
             )}
           </div>
         ))}
+        <div className="position-absolute top-0 end-0 m-2" style={{ zIndex: 10 }}>
+          <button className="btn btn-light btn-sm me-1" onClick={zoomOut} aria-label="zoom out">−</button>
+          <button className="btn btn-light btn-sm me-1" onClick={zoomIn} aria-label="zoom in">+</button>
+          <button className="btn btn-light btn-sm" onClick={resetZoom} aria-label="reset zoom">⟳</button>
+        </div>
       </div>
       <div className="border-start p-3" style={{ width: 320 }}>
         <button className="btn btn-success float-end mb-3" onClick={handleExport}>Salva YAML</button>
