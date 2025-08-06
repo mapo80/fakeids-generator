@@ -109,8 +109,6 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         top: Math.min(sy, y),
         width: Math.abs(x - sx),
         height: Math.abs(y - sy)
-        field_type: 'testo',
-        text_type: 'generico',
       };
       setAnnotations([...annotations, newAnn]);
       setSelectedId(id);
