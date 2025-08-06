@@ -23,6 +23,7 @@ From the sidebar form:
 - Select a template image or use the default one.
 - Optionally choose an existing YAML file to preload annotations.
 - Press **Carica** to load the files.
+  The sidebar collapses after loading; use the arrow on the left to expand it again.
 
 Draw rectangles on the canvas and use the toolbar to switch between drawing and selection. Edit properties from the sidebar and
 export the YAML definition with **Esporta YAML**, which also saves a copy on disk.
