@@ -78,6 +78,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         font_size: 12,
         font_color: '#000000',
         field_type: 'testo',
+        text_type: 'generico',
         left: x,
         top: y,
         width: 0,
@@ -240,6 +241,10 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
               <select className="form-select" value={selected.field_type} onChange={e => updateSelected({ field_type: e.target.value })}>
                 {fieldTypes.map(t => <option key={t}>{t}</option>)}
               </select>
+            </div>
+            <div className="mb-2">
+              <label className="form-label">text_type</label>
+              <input className="form-control" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })} />
             </div>
             <button className="btn btn-danger" onClick={deleteSelected}>Elimina</button>
           </div>
