@@ -1,38 +1,34 @@
 # Fake IDs Generator
 
-This project contains utilities for creating annotated templates of identification documents. The annotations are later used to
-generate synthetic identity cards or other documents.
+This project provides a web tool for visually annotating identity document templates. The resulting YAML files describe the
+position and styling of fields and can be used to generate synthetic documents.
 
 ## Installation
 
-Install the dependencies:
+Install the Node.js dependencies:
 
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
 ## Usage
 
-Run the interactive annotation tool:
+Start the development server:
 
 ```bash
-streamlit run app.py
+npm run dev
 ```
 
-From the sidebar form:
-- Select a template image or use the default one.
-- Optionally choose an existing YAML file to preload annotations.
-- Press **Carica** to load the files.
-  The sidebar collapses after loading; use the arrow on the left to expand it again.
-
-Draw rectangles on the canvas and use the toolbar to switch between drawing and selection. Edit properties from the sidebar and
-export the YAML definition with **Esporta YAML**, which also saves a copy on disk.
+1. In the first page, select a template image and optionally a YAML file with existing annotations.
+2. Click **Carica** to open the editor.
+3. Draw rectangles on the image by dragging with the mouse.
+4. Select rectangles to edit their properties in the panel on the right or delete them.
+5. Use **Salva YAML** to download the updated annotations.
 
 ## Tests
 
-End-to-end tests verify that the Streamlit server starts and that YAML
-annotations can be loaded and exported correctly. Run:
+An end-to-end test verifies the YAML import/export roundtrip. Run:
 
 ```bash
-pytest
+npm test
 ```
