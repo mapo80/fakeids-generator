@@ -19,7 +19,7 @@ describe('drawing bounding boxes', () => {
     });
     fireEvent.mouseDown(img, { clientX: 10, clientY: 10, button: 0, shiftKey: true });
     fireEvent.mouseMove(img, { clientX: 60, clientY: 60 });
-    fireEvent.mouseDown(img, { clientX: 60, clientY: 60, button: 0, shiftKey: true });
+    fireEvent.mouseUp(img, { clientX: 60, clientY: 60, button: 0, shiftKey: true });
     await waitFor(() => {
       const boxes = container.querySelectorAll('[data-testid="bbox"]');
       expect(boxes.length).toBe(1);

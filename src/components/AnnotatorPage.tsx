@@ -48,40 +48,19 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const handleMouseDown = (e: React.MouseEvent) => {
     if (mode === 'none' && e.target !== wrapperRef.current && (e.target as HTMLElement).tagName !== 'IMG') return;
     if (mode === 'none' && e.button === 0 && !e.shiftKey) {
-      setPanStart({ x: e.clientX, y: e.clientY, scrollLeft: wrapperRef.current!.scrollLeft, scrollTop: wrapperRef.current!.scrollTop });
+      setPanStart({
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: wrapperRef.current!.scrollLeft,
+        scrollTop: wrapperRef.current!.scrollTop
+      });
       setMode('panning');
       return;
     }
-    const rect = wrapperRef.current!.getBoundingClientRect();
-    const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
-    const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
-    if (mode === 'drawing') {
-      if (e.button === 2) { // cancel with right click
-        cancelDrawing();
-        return;
-      }
-      if (e.button !== 0) return;
-      const width = Math.abs(x - start.x);
-      const height = Math.abs(y - start.y);
-      if (width < 1 || height < 1) {
-        cancelDrawing();
-        return;
-      }
-      setAnnotations(annotations.map(a => {
-        if (a.id !== selectedId) return a;
-        return {
-          ...a,
-          left: Math.min(start.x, x),
-          top: Math.min(start.y, y),
-          width,
-          height
-        };
-      }));
-      setMode('none');
-      return;
-    }
     if (mode === 'none' && e.button === 0 && e.shiftKey) {
-      // start drawing
+      const rect = wrapperRef.current!.getBoundingClientRect();
+      const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
+      const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
       setStart({ x, y });
       setMode('drawing');
       const id = crypto.randomUUID();
@@ -170,7 +149,34 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
     }));
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (mode === 'drawing') {
+      if (e.button === 2) {
+        cancelDrawing();
+      } else if (e.button === 0) {
+        const rect = wrapperRef.current!.getBoundingClientRect();
+        const x = (e.clientX - rect.left + wrapperRef.current!.scrollLeft) / zoom;
+        const y = (e.clientY - rect.top + wrapperRef.current!.scrollTop) / zoom;
+        const width = Math.abs(x - start.x);
+        const height = Math.abs(y - start.y);
+        if (width < 1 || height < 1) {
+          cancelDrawing();
+        } else {
+          setAnnotations(annotations.map(a => {
+            if (a.id !== selectedId) return a;
+            return {
+              ...a,
+              left: Math.min(start.x, x),
+              top: Math.min(start.y, y),
+              width,
+              height
+            };
+          }));
+        }
+      }
+      setMode('none');
+      return;
+    }
     if (mode === 'moving' || mode === 'resizing' || mode === 'panning') {
       setMode('none');
       setCorner(null);
@@ -202,57 +208,112 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   };
 
   return (
-    <div className="d-flex">
-      <div className="flex-grow-1 position-relative image-wrapper overflow-auto" ref={wrapperRef}
-           onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
-           onContextMenu={e => e.preventDefault()} style={{ cursor: mode === 'panning' ? 'grabbing' : 'grab' }}>
-        <img ref={imgRef} src={image} alt="template" draggable={false}
-             onMouseDown={e => e.preventDefault()}
-             onDragStart={e => e.preventDefault()}
-             style={{ width: imgSize.width ? imgSize.width * zoom : undefined,
-                      height: imgSize.height ? imgSize.height * zoom : undefined }}
-             onLoad={e => {
-               const { naturalWidth, naturalHeight } = e.currentTarget;
-               setImgSize({ width: naturalWidth, height: naturalHeight });
-               if (wrapperRef.current) {
-                 const fit = Math.min(
-                   wrapperRef.current.clientWidth / naturalWidth,
-                   wrapperRef.current.clientHeight / naturalHeight
-                 );
-                 setBaseZoom(fit);
-                 setZoom(fit);
-               }
-             }} />
-        {annotations.map(a => (
-          <div key={a.id}
-               data-testid="bbox"
-               className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
-               style={{ left:a.left*zoom, top:a.top*zoom, width:a.width*zoom, height:a.height*zoom }}
-               onMouseDown={(e)=>{
-                 e.stopPropagation();
-                 setSelectedId(a.id);
-                 const rect = e.currentTarget.getBoundingClientRect();
-                 setOffset({ x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
-                 setMode('moving');
-               }}>
-            {a.id === selectedId && (
-              <>
-                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,left:-4,top:-4,cursor:'nw-resize'}}
-                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('nw'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
-                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,right:-4,top:-4,cursor:'ne-resize'}}
-                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('ne'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
-                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,left:-4,bottom:-4,cursor:'sw-resize'}}
-                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('sw'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
-                <div className="bg-white border border-primary position-absolute" style={{width:8,height:8,right:-4,bottom:-4,cursor:'se-resize'}}
-                     onMouseDown={(e)=>{ e.stopPropagation(); setCorner('se'); setInitialRect({left:a.left,top:a.top,width:a.width,height:a.height}); setMode('resizing'); }} />
-              </>
-            )}
-          </div>
-        ))}
+    <div className="d-flex" style={{ height: '100vh' }}>
+      <div className="flex-grow-1 position-relative h-100">
+        <div
+          className="position-relative overflow-auto w-100 h-100 image-wrapper"
+          ref={wrapperRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onContextMenu={e => e.preventDefault()}
+          style={{ cursor: mode === 'panning' ? 'grabbing' : 'grab' }}
+        >
+          <img
+            ref={imgRef}
+            src={image}
+            alt="template"
+            draggable={false}
+            onMouseDown={e => e.preventDefault()}
+            onDragStart={e => e.preventDefault()}
+            style={{
+              width: imgSize.width ? imgSize.width * zoom : undefined,
+              height: imgSize.height ? imgSize.height * zoom : undefined
+            }}
+            onLoad={e => {
+              const { naturalWidth, naturalHeight } = e.currentTarget;
+              setImgSize({ width: naturalWidth, height: naturalHeight });
+              if (wrapperRef.current) {
+                const fit = Math.min(
+                  wrapperRef.current.clientWidth / naturalWidth,
+                  wrapperRef.current.clientHeight / naturalHeight
+                );
+                setBaseZoom(fit);
+                setZoom(fit);
+              }
+            }}
+          />
+          {annotations.map(a => (
+            <div
+              key={a.id}
+              data-testid="bbox"
+              className={`position-absolute border ${a.id === selectedId ? 'border-primary' : 'border-danger'}`}
+              style={{ left: a.left * zoom, top: a.top * zoom, width: a.width * zoom, height: a.height * zoom }}
+              onMouseDown={e => {
+                e.stopPropagation();
+                setSelectedId(a.id);
+                const rect = e.currentTarget.getBoundingClientRect();
+                setOffset({ x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom });
+                setMode('moving');
+              }}
+            >
+              {a.id === selectedId && (
+                <>
+                  <div
+                    className="bg-white border border-primary position-absolute"
+                    style={{ width: 8, height: 8, left: -4, top: -4, cursor: 'nw-resize' }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setCorner('nw');
+                      setInitialRect({ left: a.left, top: a.top, width: a.width, height: a.height });
+                      setMode('resizing');
+                    }}
+                  />
+                  <div
+                    className="bg-white border border-primary position-absolute"
+                    style={{ width: 8, height: 8, right: -4, top: -4, cursor: 'ne-resize' }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setCorner('ne');
+                      setInitialRect({ left: a.left, top: a.top, width: a.width, height: a.height });
+                      setMode('resizing');
+                    }}
+                  />
+                  <div
+                    className="bg-white border border-primary position-absolute"
+                    style={{ width: 8, height: 8, left: -4, bottom: -4, cursor: 'sw-resize' }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setCorner('sw');
+                      setInitialRect({ left: a.left, top: a.top, width: a.width, height: a.height });
+                      setMode('resizing');
+                    }}
+                  />
+                  <div
+                    className="bg-white border border-primary position-absolute"
+                    style={{ width: 8, height: 8, right: -4, bottom: -4, cursor: 'se-resize' }}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setCorner('se');
+                      setInitialRect({ left: a.left, top: a.top, width: a.width, height: a.height });
+                      setMode('resizing');
+                    }}
+                  />
+                </>
+              )}
+            </div>
+          ))}
+        </div>
         <div className="position-absolute top-0 end-0 m-2" style={{ zIndex: 10 }}>
-          <button className="btn btn-light btn-sm me-1" onClick={zoomOut} aria-label="zoom out">−</button>
-          <button className="btn btn-light btn-sm me-1" onClick={zoomIn} aria-label="zoom in">+</button>
-          <button className="btn btn-light btn-sm" onClick={resetZoom} aria-label="reset zoom">⟳</button>
+          <button className="btn btn-light btn-sm me-1" onClick={zoomOut} aria-label="zoom out">
+            −
+          </button>
+          <button className="btn btn-light btn-sm me-1" onClick={zoomIn} aria-label="zoom in">
+            +
+          </button>
+          <button className="btn btn-light btn-sm" onClick={resetZoom} aria-label="reset zoom">
+            ⟳
+          </button>
         </div>
       </div>
       <div className="border-start p-3" style={{ width: 320, flex: '0 0 320px' }}>
