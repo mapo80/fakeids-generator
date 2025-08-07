@@ -9,7 +9,7 @@ describe('YAML roundtrip', () => {
     const newAnn: Annotation = {
       id: '1',
       field_name: 'newField',
-      field_type: 'firma',
+      field_type: 'face',
       text_type: 'generico',
       left: 10,
       top: 20,

@@ -9,7 +9,7 @@ interface Props {
   setAnnotations: (a: Annotation[]) => void;
 }
 
-const fieldTypes = ['testo','immagine','firma','timbro','foto_volto'];
+const fieldTypes = ['testo','immagine','firma','timbro','face'];
 const fonts = ['OCR-B'];
 const alignments = ['left', 'center', 'right'];
 const textTypeOptions = [

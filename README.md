@@ -34,6 +34,8 @@ pip install -r fake_generator/requirements.txt
 python -m fake_generator.generate path/to/template.yaml --kaggle-username <user> --kaggle-key <key>
 ```
 
+The generator supports `field_type` values like text, signature, stamp and face photos. Face images are downloaded on first use from the [AT\&T face database](https://www.kaggle.com/datasets/kasikrit/att-database-of-faces) and cached in the directory provided via `--face-dir` (default `faces`).
+
 The YAML can specify a `font` for each text field. Fonts are looked up in the `fonts` directory; at the moment the project includes the **OCR-B** regular font, which can be referenced with `font: OCR-B`.
 
 ## Tests
