@@ -81,12 +81,15 @@ def draw_text(draw: ImageDraw.ImageDraw, field: dict, text: str) -> None:
     draw.text((tx, ty), text, fill=font_color, font=font)
 
 
-def paste_image(img: Image.Image, field: dict, src_path: Path) -> None:
+def paste_image(
+    img: Image.Image, field: dict, src_path: Path, make_transparent: bool = True
+) -> None:
     """Paste an image into the given field, resizing to fit.
 
-    Any nearly-white pixels in the source image are made fully transparent so
-    that dataset images with white backgrounds (e.g. signatures or stamps)
-    blend seamlessly with the underlying template.
+    When ``make_transparent`` is ``True`` nearly-white pixels in the source
+    image are made fully transparent so that dataset images with white
+    backgrounds (e.g. signatures or stamps) blend seamlessly with the
+    underlying template.
     """
 
     x = int(field["x_left"])
@@ -101,18 +104,19 @@ def paste_image(img: Image.Image, field: dict, src_path: Path) -> None:
     new_h = int(ph * scale)
     patch = patch.resize((new_w, new_h), Image.LANCZOS)
 
-    # Remove near-white background and smoothly fade edges to transparency
-    threshold = 240
-    datas: list[tuple[int, int, int, int]] = []
-    for r, g, b, a in patch.getdata():
-        max_rgb = max(r, g, b)
-        if max_rgb > threshold:
-            alpha = int(a * (255 - max_rgb) / (255 - threshold))
-            datas.append((255, 255, 255, alpha))
-        else:
-            datas.append((r, g, b, a))
-    patch.putdata(datas)
-    patch.putalpha(patch.getchannel("A").filter(ImageFilter.GaussianBlur(1)))
+    if make_transparent:
+        # Remove near-white background and smoothly fade edges to transparency
+        threshold = 240
+        datas: list[tuple[int, int, int, int]] = []
+        for r, g, b, a in patch.getdata():
+            max_rgb = max(r, g, b)
+            if max_rgb > threshold:
+                alpha = int(a * (255 - max_rgb) / (255 - threshold))
+                datas.append((255, 255, 255, alpha))
+            else:
+                datas.append((r, g, b, a))
+        patch.putdata(datas)
+        patch.putalpha(patch.getchannel("A").filter(ImageFilter.GaussianBlur(1)))
 
     px = x + (w - new_w) // 2
     py = y + (h - new_h) // 2
@@ -142,6 +146,40 @@ def prepare_signatures(username: str, key: str, sig_dir: Path) -> list[Path]:
         check=True,
     )
     images = list(sig_dir.rglob("*.png")) + list(sig_dir.rglob("*.jpg"))
+    return images
+
+
+def prepare_faces(username: str, key: str, face_dir: Path) -> list[Path]:
+    """Ensure the face dataset exists locally and return image paths."""
+    face_dir.mkdir(parents=True, exist_ok=True)
+    images = (
+        list(face_dir.rglob("*.pgm"))
+        + list(face_dir.rglob("*.png"))
+        + list(face_dir.rglob("*.jpg"))
+    )
+    if images:
+        return images
+
+    os.environ["KAGGLE_USERNAME"] = username
+    os.environ["KAGGLE_KEY"] = key
+    subprocess.run(
+        [
+            "kaggle",
+            "datasets",
+            "download",
+            "-d",
+            "kasikrit/att-database-of-faces",
+            "-p",
+            str(face_dir),
+            "--unzip",
+        ],
+        check=True,
+    )
+    images = (
+        list(face_dir.rglob("*.pgm"))
+        + list(face_dir.rglob("*.png"))
+        + list(face_dir.rglob("*.jpg"))
+    )
     return images
 
 
@@ -197,6 +235,7 @@ def generate_image(
     out_path: Path,
     signatures: list[Path],
     stamps: list[Path],
+    faces: list[Path],
 ) -> None:
     img = Image.open(template_path).convert("RGB")
     draw = ImageDraw.Draw(img)
@@ -211,6 +250,9 @@ def generate_image(
         elif ftype == "timbro" and stamps:
             stamp_path = random.choice(stamps)
             paste_image(img, field, stamp_path)
+        elif ftype == "face" and faces:
+            face_path = random.choice(faces)
+            paste_image(img, field, face_path, make_transparent=False)
     img.save(out_path)
 
 
@@ -242,6 +284,11 @@ def main() -> None:
         default="stamps",
         help="Directory where stamp images will be stored",
     )
+    parser.add_argument(
+        "--face-dir",
+        default="faces",
+        help="Directory where face images will be stored",
+    )
     args = parser.parse_args()
 
     yaml_path = Path(args.template)
@@ -257,10 +304,12 @@ def main() -> None:
     signatures = prepare_signatures(args.kaggle_username, args.kaggle_key, sig_dir)
     stamp_dir = Path(args.stamp_dir)
     stamps = prepare_stamps(args.stamp_url, stamp_dir)
+    face_dir = Path(args.face_dir)
+    faces = prepare_faces(args.kaggle_username, args.kaggle_key, face_dir)
 
     for i in range(args.count):
         out_file = out_dir / f"generated_{i+1}.png"
-        generate_image(template_img, fields, out_file, signatures, stamps)
+        generate_image(template_img, fields, out_file, signatures, stamps, faces)
 
 
 if __name__ == "__main__":
