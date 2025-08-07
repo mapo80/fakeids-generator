@@ -37,6 +37,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
   const imgRef = useRef<HTMLImageElement>(null);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
   const [panStart, setPanStart] = useState<{x:number,y:number,scrollLeft:number,scrollTop:number}|null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const zoomIn = () => setZoom(z => z + 0.1);
   const zoomOut = () => setZoom(z => Math.max(0.1, z - 0.1));
@@ -276,7 +277,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
               }
             }}
           />
-            {annotations.map(a => (
+            {annotations.map((a, idx) => (
               <div
                 key={a.id}
                 data-testid="bbox"
@@ -286,7 +287,8 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
                   top: a.top * zoom,
                   width: a.width * zoom,
                   height: a.height * zoom,
-                  cursor: selectedId === a.id && mode === 'moving' ? 'grabbing' : 'grab'
+                  cursor: selectedId === a.id && mode === 'moving' ? 'grabbing' : 'grab',
+                  zIndex: idx
                 }}
                 onMouseDown={e => {
                   e.stopPropagation();
@@ -446,12 +448,37 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         )}
         <hr />
         <h5>Annotazioni</h5>
-          <ul className="list-group">
+          <ul
+            className="list-group"
+            onDragOver={e => e.preventDefault()}
+            onDrop={() => {
+              if (!draggingId) return;
+              const from = annotations.findIndex(a => a.id === draggingId);
+              if (from === annotations.length - 1) return;
+              const newAnns = [...annotations];
+              const [moved] = newAnns.splice(from, 1);
+              newAnns.push(moved);
+              setAnnotations(newAnns);
+            }}
+          >
             {annotations.map(a => (
               <li
                 key={a.id}
                 className={`list-group-item ${a.id === selectedId ? 'active' : ''} cursor-pointer`}
                 onClick={() => setSelectedId(a.id)}
+                draggable
+                onDragStart={() => setDraggingId(a.id)}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => {
+                  if (!draggingId || draggingId === a.id) return;
+                  const newAnns = [...annotations];
+                  const from = newAnns.findIndex(x => x.id === draggingId);
+                  const to = newAnns.findIndex(x => x.id === a.id);
+                  const [moved] = newAnns.splice(from, 1);
+                  newAnns.splice(to, 0, moved);
+                  setAnnotations(newAnns);
+                }}
+                onDragEnd={() => setDraggingId(null)}
               >
                 {a.field_name || '(senza nome)'}
               </li>
