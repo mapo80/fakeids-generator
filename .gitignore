@@ -1,2 +1,7 @@
 node_modules
 dist
+
+output
+signatures
+stamps
+__pycache__
