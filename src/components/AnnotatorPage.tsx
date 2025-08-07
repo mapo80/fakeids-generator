@@ -408,7 +408,15 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
               <>
                 <div className="mb-2">
                   <label className="form-label">text_type</label>
-                  <input className="form-control" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })} />
+                  <select className="form-select" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })}>
+                    {textTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div className="mb-2">
+                  <label className="form-label">text_align</label>
+                  <select className="form-select" value={selected.text_align} onChange={e => updateSelected({ text_align: e.target.value as 'left'|'center'|'right' })}>
+                    {alignments.map(a => <option key={a} value={a}>{a}</option>)}
+                  </select>
                 </div>                
                 <div className="mb-2">
                   <label className="form-label">font</label>
@@ -425,18 +433,6 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
                 <div className="mb-2">
                   <label className="form-label">font_color</label>
                   <input type="color" className="form-control form-control-color" value={selected.font_color} onChange={e => updateSelected({ font_color: e.target.value })} />
-                </div>
-                <div className="mb-2">
-                  <label className="form-label">text_align</label>
-                  <select className="form-select" value={selected.text_align} onChange={e => updateSelected({ text_align: e.target.value as 'left'|'center'|'right' })}>
-                    {alignments.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
-                </div>
-                <div className="mb-2">
-                  <label className="form-label">text_type</label>
-                  <select className="form-select" value={selected.text_type} onChange={e => updateSelected({ text_type: e.target.value })}>
-                    {textTypeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
                 </div>
               </>
             )}
