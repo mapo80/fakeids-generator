@@ -11,6 +11,7 @@ interface Props {
 
 const fieldTypes = ['testo','immagine','firma','timbro','face'];
 const fonts = ['OCR-B'];
+const fontSizes = [8,9,10,11,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60];
 const alignments = ['left', 'center', 'right'];
 const textTypeOptions = [
   { value: 'numero', label: 'Numero' },
@@ -102,7 +103,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
         field_name: '',
         field_type: 'testo',
         font: fonts[0],
-        font_size: 12,
+        font_size: 14,
         font_color: '#000000',
         text_type: textTypeOptions[0].value,
         text_align: 'left',
@@ -387,7 +388,7 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
                   const patch: Partial<Annotation> = { field_type: type };
                   if (type === 'testo') {
                     patch.font = selected.font || fonts[0];
-                    patch.font_size = selected.font_size || 12;
+                    patch.font_size = selected.font_size || 14;
                     patch.font_color = selected.font_color || '#000000';
                     patch.text_type = selected.text_type || textTypeOptions[0].value;
                     patch.text_align = selected.text_align || 'left';
@@ -428,7 +429,9 @@ const AnnotatorPage: React.FC<Props> = ({ image, imageName, annotations, setAnno
                 </div>
                 <div className="mb-2">
                   <label className="form-label">font_size</label>
-                  <input type="number" className="form-control" value={selected.font_size} onChange={e => updateSelected({ font_size: Number(e.target.value) })} />
+                  <select className="form-select" value={selected.font_size} onChange={e => updateSelected({ font_size: Number(e.target.value) })}>
+                    {fontSizes.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div className="mb-2">
                   <label className="form-label">font_color</label>
